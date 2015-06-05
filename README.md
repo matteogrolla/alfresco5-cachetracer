@@ -24,3 +24,9 @@ log4j.logger.org.alfresco.repo.cache.DefaultSimpleCache=debug
 
 ## How to uninstall
 remove the .class files
+
+## What could be done
+The code covers my current bare necessities but it could be nice to
+- make it a bean to monitor using jmx
+- allow the caches to be resized at runtime
+feel free to push and pull!!!
