@@ -28,6 +28,7 @@ import org.springframework.beans.factory.BeanNameAware;
 import java.io.Serializable;
 import java.util.AbstractMap;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * {@link SimpleCache} implementation backed by a {@link com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap}.
@@ -41,9 +42,9 @@ public final class DefaultSimpleCache<K extends Serializable, V extends Object>
     private static final int DEFAULT_CAPACITY = 200000;
     private ConcurrentLinkedHashMap<K, AbstractMap.SimpleImmutableEntry<K, V>> map;
     private String cacheName;
-    private long hits = 0;
-    private long readAccesses = 0;
-    private long writeAccesses = 0;
+    private AtomicLong hits = new AtomicLong(0);
+    private AtomicLong readAccesses = new AtomicLong(0);
+    private AtomicLong writeAccesses = new AtomicLong(0);
     
     /**
      * Construct a cache using the specified capacity and name.
@@ -60,11 +61,11 @@ public final class DefaultSimpleCache<K extends Serializable, V extends Object>
         setBeanName(cacheName);
 
         EvictionListener<K, AbstractMap.SimpleImmutableEntry<K, V>> listener = new EvictionListener<K, AbstractMap.SimpleImmutableEntry<K, V>>() {
-          long numEvictions = 0;
+          AtomicLong numEvictions = new AtomicLong(0);
 
           @Override public void onEviction(K key, AbstractMap.SimpleImmutableEntry<K, V> value) {
-            float hitRatio = ((float)hits) / readAccesses;
-            log.debug("Cache: " + cacheName + " evictions: " + (numEvictions++) + " hitRatio: " + hitRatio);
+            float hitRatio = ((float)(hits.get())) / readAccesses.get();
+            log.debug("Cache: " + cacheName + " evictions: " + (numEvictions.getAndIncrement()) + " hitRatio: " + hitRatio);
           }
         };
         
@@ -101,8 +102,8 @@ public final class DefaultSimpleCache<K extends Serializable, V extends Object>
     @Override
     public V get(K key)
     {
-        readAccesses++;
-        if (readAccesses % 1000 == 0 && !getCacheName().equals("compiledModelsCache")  && !getCacheName().equals("prefixesCache")){
+        readAccesses.getAndIncrement();
+        if (readAccesses.get() % 1000 == 0 && !getCacheName().equals("compiledModelsCache")  && !getCacheName().equals("prefixesCache")){
           log.debug("Get Cache: "+getCacheName()+" size: "+map.size()+" capacity: "+map.capacity()+" hitRatio: "+getHitRatio());
         }
         AbstractMap.SimpleImmutableEntry<K, V> kvp = map.get(key);
@@ -110,20 +111,20 @@ public final class DefaultSimpleCache<K extends Serializable, V extends Object>
         {
             return null;
         } else {
-          hits++;
+          hits.getAndIncrement();
         }
         return kvp.getValue();
     }
 
     float getHitRatio(){
-      return ((float)hits) / readAccesses;
+      return ((float)hits.get()) / readAccesses.get();
     }
 
     @Override
     public void put(K key, V value)
     {
-        writeAccesses++;
-        if (writeAccesses % 1000 == 0){
+        writeAccesses.getAndIncrement();
+        if (writeAccesses.get() % 1000 == 0){
           log.debug("Put Cache: "+getCacheName()+"size: "+map.size()+" capacity: "+map.capacity()+" hitRatio: "+getHitRatio());
         }
         putAndCheckUpdate(key, value);
