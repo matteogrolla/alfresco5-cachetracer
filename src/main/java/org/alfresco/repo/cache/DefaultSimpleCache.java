@@ -65,7 +65,9 @@ public final class DefaultSimpleCache<K extends Serializable, V extends Object>
 
           @Override public void onEviction(K key, AbstractMap.SimpleImmutableEntry<K, V> value) {
             float hitRatio = ((float)(hits.get())) / readAccesses.get();
-            log.debug("Cache: " + cacheName + " evictions: " + (numEvictions.getAndIncrement()) + " hitRatio: " + hitRatio);
+            if (numEvictions.get() % 1000 == 0) {
+              log.debug("Cache: " + DefaultSimpleCache.this.cacheName + " evictions: " + (numEvictions.getAndIncrement()) + " hitRatio: " + hitRatio);
+            }
           }
         };
         
